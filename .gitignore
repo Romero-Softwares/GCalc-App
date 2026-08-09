@@ -1,0 +1,24 @@
+# Python environments and caches
+.venv/
+.runenv/
+__pycache__/
+*.py[cod]
+
+# Flet and Flutter build output
+build/
+.dart_tool/
+.flet/
+
+# IDE files
+.vs/
+
+# Local runtime data
+storage/
+src/storage/
+
+# Signing credentials
+*.keystore
+*.jks
+
+# Local logs
+*.log

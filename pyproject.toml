@@ -1,0 +1,41 @@
+[project]
+name = "gcalc"
+version = "0.1.4"
+build = 2
+description = "Gcalc - Galvanos Calculador"
+readme = "README.md"
+requires-python = ">=3.13"
+authors = [
+    { name = "Merotec Developer", email = "merotec32@gmail.com" }
+]
+dependencies = [
+  "flet==0.28.3", "requests"
+]
+
+[tool.flet]
+platforms = ["android-arm64"]
+build_number = 3
+# org name in reverse domain name notation, e.g. "com.mycompany".
+# Combined with project.name to build bundle ID for iOS and Android apps
+org = "com.merotecdev"
+
+# project display name that is used as an app title on Android and iOS home screens,
+# shown in window titles and about app dialogs on desktop.
+product = "Galvanos Calc"
+
+# company name to display in about app dialogs
+company = "Merotec Dev Softwares"
+
+# copyright text to display in about app dialogs
+copyright = "Copyright (C) 2026 by Merotec Dev"
+
+android_splash_image = "src/assets/splash.png"
+
+[tool.flet.app]
+path = "src"
+
+[tool.flet.android]
+target_sdk_version = 37
+
+icon_path = "assets/splash.png"
+splash_path = "assets/splash.png"

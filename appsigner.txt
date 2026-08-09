@@ -1,0 +1,5 @@
+keytool -genkey -v -keystore chaveAppGcalc.keystore -alias merotecdev -keyalg RSA -keysize 2048 -validity 10000
+
+jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 -keystore chaveAppGcalc.keystore build/aab/app-release.aab merotecdev
+
+jarsigner -verify -verbose -certs app.aab
