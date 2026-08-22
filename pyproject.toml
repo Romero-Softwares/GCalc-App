@@ -1,7 +1,7 @@
 [project]
 name = "gcalc"
-version = "0.1.4"
-build = 2
+version = "0.1.5"
+build = 4
 description = "Gcalc - Galvanos Calculador"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -14,7 +14,7 @@ dependencies = [
 
 [tool.flet]
 platforms = ["android-arm64"]
-build_number = 3
+build_number = 4
 # org name in reverse domain name notation, e.g. "com.mycompany".
 # Combined with project.name to build bundle ID for iOS and Android apps
 org = "com.merotecdev"
@@ -39,3 +39,9 @@ target_sdk_version = 37
 
 icon_path = "assets/splash.png"
 splash_path = "assets/splash.png"
+
+# A chave fica fora do controle de versão; as senhas são fornecidas apenas no
+# ambiente de execução pelo script build_android_signed.ps1.
+[tool.flet.android.signing]
+key_store = "chaveAppGcalc.keystore"
+key_alias = "merotecdev"

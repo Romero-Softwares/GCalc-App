@@ -91,20 +91,67 @@ class Containercalc(f.Container):
         measure_filter = f.InputFilter(regex_string=r"^[0-9]*([,.][0-9]*)?$")
         quantity_filter = f.InputFilter(regex_string=r"^[0-9]*$")
 
+        entry1 = f.TextField(
+            label='Comprimento (mm)',
+            prefix_icon=f.Icons.PIN,
+            text_align=f.TextAlign.LEFT,
+            bgcolor='#ffffff',
+            color='#006266',
+            hint_text="Ex.: 120 ou 120,5",
+            input_filter=measure_filter,
+            keyboard_type=f.KeyboardType.NUMBER,
+        )
+        entry2 = f.TextField(
+            label='Diâmetro (mm)',
+            prefix_icon=f.Icons.PIN,
+            text_align=f.TextAlign.LEFT,
+            bgcolor='#ffffff',
+            color='#006266',
+            hint_text="Ex.: 35 ou 35,5",
+            input_filter=measure_filter,
+            keyboard_type=f.KeyboardType.NUMBER,
+        )
+        unit_help = f.Text(
+            "As medidas são calculadas em milímetros.",
+            size=12,
+            color="#4b5563",
+        )
+
+        def update_measurement_unit(e):
+            if e.control.value == "in":
+                entry1.label = "Comprimento (in)"
+                entry2.label = "Diâmetro (in)"
+                entry1.hint_text = "Ex.: 4,75 ou 4.75"
+                entry2.hint_text = "Ex.: 1,38 ou 1.38"
+                unit_help.value = "As polegadas são convertidas automaticamente para milímetros."
+            else:
+                entry1.label = "Comprimento (mm)"
+                entry2.label = "Diâmetro (mm)"
+                entry1.hint_text = "Ex.: 120 ou 120,5"
+                entry2.hint_text = "Ex.: 35 ou 35,5"
+                unit_help.value = "As medidas são calculadas em milímetros."
+            self.page.update()
+
+        measurement_unit = f.RadioGroup(
+            value="mm",
+            on_change=update_measurement_unit,
+            content=f.Row(
+                controls=[
+                    f.Radio(value="mm", label="Milímetros (mm)"),
+                    f.Radio(value="in", label="Polegadas (in)"),
+                ],
+                spacing=12,
+            ),
+        )
+
         self.content = f.Column(
             controls=[
                 self.opt,
-                entry1 := f.TextField(label='Comprimento (mm)', prefix_icon=f.Icons.PIN,
-                                      text_align=f.TextAlign.LEFT, bgcolor='#ffffff', color='#006266',
-                                      hint_text="Ex.: 120 ou 120,5",
-                                      input_filter=measure_filter,
-                                      keyboard_type=f.KeyboardType.NUMBER),
-
-                entry2 := f.TextField(label='Diâmetro (mm)', prefix_icon=f.Icons.PIN,
-                                      text_align=f.TextAlign.LEFT, bgcolor='#ffffff', color='#006266',
-                                      hint_text="Ex.: 35 ou 35,5",
-                                      input_filter=measure_filter,
-                                      keyboard_type=f.KeyboardType.NUMBER),
+                f.Text("Unidade de entrada", size=14, weight=f.FontWeight.W_500),
+                measurement_unit,
+                unit_help,
+                entry1,
+                entry2,
 
                 entry3 := f.TextField(label='Quantidade', prefix_icon=f.Icons.FORMAT_LIST_NUMBERED,
                                       text_align=f.TextAlign.LEFT, bgcolor='#ffffff', color='#006266',
@@ -123,7 +170,7 @@ class Containercalc(f.Container):
             parsed = float(text)
             if parsed <= 0:
                 raise ValueError("non-positive")
-            return parsed
+            return parsed * 25.4 if measurement_unit.value == "in" else parsed
 
         def parse_quantity(value):
             text = (value or "1").strip()
