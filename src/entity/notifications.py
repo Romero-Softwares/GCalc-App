@@ -146,7 +146,9 @@ class Notifications(f.View):
                     ]
                 ),
             ),
-            elevation=2 if is_read else 5,
+            elevation=6 if is_read else 10,
+            shadow_color=f.Colors.with_opacity(0.35, "#334155"),
+            shape=f.RoundedRectangleBorder(radius=10),
         )
 
     def mark_as_read(self, n_id):

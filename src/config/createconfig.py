@@ -4,6 +4,8 @@ def criar_xml(nome_arquivo):
     """
     Cria um novo arquivo XML com parâmetros padrão.
     """
+    diretorio = os.path.dirname(nome_arquivo)
+
     # Cria o elemento raiz
     raiz = ET.Element("config")
 
@@ -12,6 +14,7 @@ def criar_xml(nome_arquivo):
     ET.SubElement(raiz, "stCr").text = "50"
     ET.SubElement(raiz, "stRe").text = "20"
     ET.SubElement(raiz, "stNq").text = "1"
+    ET.SubElement(raiz, "tipo_processo").text = "Cromo"
     ET.SubElement(raiz, "app_id").text = "0"
     ET.SubElement(raiz, "licence_key").text = "0"
 
@@ -34,6 +37,8 @@ def criar_xml(nome_arquivo):
 
     # Escreve o arquivo XML
     try:
+        if diretorio:
+            os.makedirs(diretorio, exist_ok=True)
         arvore.write(nome_arquivo, encoding="utf-8", xml_declaration=True)
         print(f"Arquivo '{nome_arquivo}' criado com sucesso.")
     except Exception as e:
@@ -50,7 +55,3 @@ def verificar_e_criar_xml(nome_arquivo):
         print(f"Arquivo '{nome_arquivo}' já existe.")
 
 # Nome do arquivo a ser verificado
-nome_do_arquivo = "config/config.xml"
-
-# Executa a função
-verificar_e_criar_xml(nome_do_arquivo)

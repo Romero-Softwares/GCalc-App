@@ -1,11 +1,33 @@
 import flet as ft
+import os
 import time
 from entity.adlicenceview import Adlicenceview
 from entity.calc import Calc
+from entity.card_style import card_border, card_shadow
 from entity.configview import ConfigView
 from entity.notifications import Notifications
-from config.config import carregar_configuracoes
-from config.config_manager import ConfigManager
+from entity.update_checker import UpdateChecker
+
+
+def setup_app_data_directory():
+    """Usa uma pasta gravável do usuário para os arquivos de configuração.
+
+    No pacote Windows, o diretório do executável pode ser somente leitura e
+    também muda quando a pasta é renomeada ou o aplicativo é extraído em outro
+    local. Centralizar os arquivos locais em LOCALAPPDATA evita que a abertura
+    falhe ao criar ou ler ``config/config.xml``.
+    """
+    base_directory = os.environ.get("LOCALAPPDATA")
+    if not base_directory:
+        base_directory = os.path.join(os.path.expanduser("~"), "AppData", "Local")
+
+    app_directory = os.path.join(
+        base_directory,
+        "Merotec Dev Softwares",
+        "Galvanos Calc",
+    )
+    os.makedirs(app_directory, exist_ok=True)
+    os.chdir(app_directory)
 
 
 def build_splash():
@@ -24,7 +46,8 @@ def build_splash():
                     padding=16,
                     border_radius=28,
                     bgcolor="#ffffff",
-                    shadow=ft.BoxShadow(blur_radius=18, color="#9ca3af"),
+                    border=card_border(),
+                    shadow=card_shadow(),
                     content=ft.Image(src="icon.png", fit=ft.ImageFit.CONTAIN),
                 ),
                 ft.Column(
@@ -53,6 +76,9 @@ def reload_app(page: ft.Page):
 
 def main(page: ft.Page):
     #page.client_storage.clear()
+    setup_app_data_directory()
+    from config.config_manager import ConfigManager
+
     page.theme_mode = ft.ThemeMode.LIGHT
     page.window.bgcolor = ft.Colors.TRANSPARENT
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
@@ -136,8 +162,8 @@ def main(page: ft.Page):
     page.on_view_pop = new_view
     page.go(page.route)
     page.run_thread(sync_remote_config)
+    page.run_thread(UpdateChecker(page).check_in_background)
 
 
 if __name__ == "__main__":
     ft.app(target=main, assets_dir="assets")
-

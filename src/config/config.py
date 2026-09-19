@@ -10,6 +10,12 @@ def carregar_configuracoes(arquivo_xml):
         stCr_str = root.find('stCr').text
         stRe_str = root.find('stRe').text
         stNq_str = root.find('stNq').text
+        tipo_processo_element = root.find('tipo_processo')
+        tipo_processo = (
+            tipo_processo_element.text
+            if tipo_processo_element is not None and tipo_processo_element.text
+            else "Cromo"
+        )
         app_id = root.find('app_id').text # o padrão é 0
 
         licence_key = root.find('licence_key').text # o padão é 0
@@ -30,6 +36,7 @@ def carregar_configuracoes(arquivo_xml):
             "stCr": int(stCr_str),
             "stRe": int(stRe_str),
             "stNq": float(stNq_str),
+            "tipo_processo": str(tipo_processo),
             "app_id": str(app_id),
 
             "licence_key": str(licence_key),

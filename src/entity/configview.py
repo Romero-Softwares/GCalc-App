@@ -3,6 +3,7 @@ import xml.etree.ElementTree as ET
 import flet as f
 
 from config.config import carregar_configuracoes
+from entity.card_style import card_border, card_shadow
 from entity.dialogs import share_clicked
 
 
@@ -58,7 +59,8 @@ class ConfigView(f.View):
             padding=10,
             bgcolor="#FFFFFF",
             border_radius=10,
-            shadow=f.BoxShadow(blur_radius=5, color="#777777"),
+            border=card_border(),
+            shadow=card_shadow(),
             visible=True,
             content=f.Column(
                 width=400,
@@ -150,6 +152,8 @@ class ConfigView(f.View):
                     height=150,
                     padding=10,
                     border_radius=5,
+                    border=card_border(),
+                    shadow=card_shadow(),
                     content=f.Column(
                         horizontal_alignment=f.CrossAxisAlignment.CENTER,
                         controls=[
@@ -169,6 +173,8 @@ class ConfigView(f.View):
                     height=150,
                     padding=10,
                     border_radius=5,
+                    border=card_border(),
+                    shadow=card_shadow(),
                     content=f.Column(
                         horizontal_alignment=f.CrossAxisAlignment.CENTER,
                         controls=[
@@ -188,6 +194,8 @@ class ConfigView(f.View):
                     height=150,
                     padding=10,
                     border_radius=5,
+                    border=card_border(),
+                    shadow=card_shadow(),
                     content=f.Column(
                         horizontal_alignment=f.CrossAxisAlignment.CENTER,
                         controls=[

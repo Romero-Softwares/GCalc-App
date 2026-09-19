@@ -3,7 +3,20 @@ import xml.etree.ElementTree as ET
 import flet as f
 
 from config.config import carregar_configuracoes
+from entity.card_style import card_border, card_shadow
 from entity.txt import txt_info_calc
+
+
+def dialog_main_card_shadow():
+    """Sombra suave para separar os blocos principais sem criar uma faixa escura."""
+    return [
+        f.BoxShadow(
+            blur_radius=5,
+            spread_radius=0,
+            color=f.Colors.with_opacity(0.10, "#334155"),
+            offset=f.Offset(0, 2),
+        )
+    ]
 
 
 result = f.AlertDialog(
@@ -69,6 +82,7 @@ def get_listmed(page: f.Page):
             border_radius=8,
             bgcolor="#ffffff",
             border=f.border.all(1, "#e5e7eb"),
+            shadow=card_shadow(),
             content=f.Column(
                 spacing=8,
                 controls=[
@@ -92,6 +106,8 @@ def get_listmed(page: f.Page):
                                 padding=10,
                                 border_radius=6,
                                 bgcolor="#eef2ff",
+                                border=card_border("#c7d2fe"),
+                                shadow=card_shadow(),
                                 content=f.Column(
                                     spacing=2,
                                     controls=[
@@ -105,6 +121,8 @@ def get_listmed(page: f.Page):
                                 padding=10,
                                 border_radius=6,
                                 bgcolor="#ecfdf5",
+                                border=card_border("#a7f3d0"),
+                                shadow=card_shadow(),
                                 content=f.Column(
                                     spacing=2,
                                     controls=[
@@ -147,11 +165,21 @@ def get_listmed(page: f.Page):
             height=320,
             padding=f.Padding(18, 8, 18, 12),
             content=f.Column(
-                scroll=True,
-                alignment=f.CrossAxisAlignment.CENTER,
+                scroll=f.ScrollMode.HIDDEN,
+                alignment=f.MainAxisAlignment.START,
                 spacing=12,
                 expand=True,
-                controls=[measure_card(i) for i in root.findall("listmed")],
+                controls=[
+                    f.Container(height=8),
+                    *[
+                        f.Container(
+                            padding=f.Padding(8, 6, 8, 6),
+                            content=measure_card(i),
+                        )
+                        for i in root.findall("listmed")
+                    ],
+                    f.Container(height=16),
+                ],
             ),
         ),
     )
@@ -201,6 +229,7 @@ def clear_historic(page: f.Page):
             height=80,
             border_radius=4,
             bgcolor="transparent",
+            shadow=card_shadow(),
             image=f.DecorationImage(opacity=0.3, src="paquimetro.webp", fit=f.ImageFit.COVER),
             content=f.Column(
                 controls=[f.Text(value="Seu histórico de cálculo está vazio!", size=16, weight="bold")]
@@ -215,6 +244,7 @@ def clear_historic(page: f.Page):
             height=80,
             border_radius=4,
             bgcolor="transparent",
+            shadow=card_shadow(),
             image=f.DecorationImage(opacity=0.3, src="paquimetro.webp", fit=f.ImageFit.COVER),
             content=f.Column(
                 controls=[f.Text(value="Algo deu errado ao tentar limpar o histórico!", size=16, weight="bold")]
@@ -233,9 +263,59 @@ def hitorico_calculo(page: f.Page):
         linhas = [linha.strip() for linha in historico["saida"].splitlines() if linha.strip()]
         processo = linhas[0].replace("Processo:", "").strip() if linhas else "Processo"
         detalhes = linhas[1:] if len(linhas) > 1 else []
+        area_values = {"dm²": "-", "in²": "-", "ft²": "-"}
+        for area_line in historico["aria_total"].splitlines():
+            area_line = area_line.replace("Área total:", "").strip()
+            if not area_line:
+                continue
+            value, separator, unit = area_line.rpartition(" ")
+            if separator and unit in area_values:
+                area_values[unit] = value
+
+        if area_values["in²"] == "-" and area_values["dm²"] != "-":
+            try:
+                area_dm2 = float(area_values["dm²"].replace(",", "."))
+                area_values["in²"] = f"{area_dm2 * 15.500031000062:.2f}".replace(".", ",")
+                area_values["ft²"] = f"{area_dm2 * 0.107639104167:.2f}".replace(".", ",")
+            except ValueError:
+                pass
+
+        area_blocks = [(unit, area_values[unit]) for unit in ("dm²", "in²", "ft²")]
+
+        detail_rows = []
+        for part in detalhes:
+            label, separator, value = part.partition(":")
+            detail_rows.append(
+                f.Container(
+                    padding=f.Padding(10, 8, 10, 8),
+                    border_radius=4,
+                    bgcolor="#f8fafc",
+                    border=f.border.all(1, "#e2e8f0"),
+                    content=f.Row(
+                        vertical_alignment=f.CrossAxisAlignment.START,
+                        controls=[
+                            f.Text(label.strip(), size=12, color="#6b7280", no_wrap=True),
+                            f.Container(
+                                expand=True,
+                                alignment=f.alignment.top_right,
+                                padding=f.Padding(8, 0, 0, 0),
+                                content=f.Text(
+                                    value.strip() if separator else part,
+                                    size=14,
+                                    color="#111827",
+                                    weight=f.FontWeight.BOLD,
+                                    text_align=f.TextAlign.RIGHT,
+                                    no_wrap=False,
+                                ),
+                            ),
+                        ],
+                    ),
+                )
+            )
 
         result_dialog = f.AlertDialog(
             content_padding=0,
+            inset_padding=f.Padding(10, 24, 10, 24),
             shape=f.RoundedRectangleBorder(radius=10),
             bgcolor="#f8fafc",
             title_padding=f.Padding(18, 14, 8, 0),
@@ -252,34 +332,64 @@ def hitorico_calculo(page: f.Page):
             ),
             content=f.Container(
                 width=420,
+                height=min(560, max(260, (page.height or 720) - 140)),
                 padding=f.Padding(18, 8, 18, 14),
                 content=f.Column(
-                    tight=True,
+                    expand=True,
+                    scroll=f.ScrollMode.HIDDEN,
                     spacing=12,
                     controls=[
                         f.Container(
                             padding=14,
                             border_radius=8,
                             bgcolor="#ffffff",
-                            border=f.border.all(1, "#e5e7eb"),
+                            border=card_border(),
+                            shadow=dialog_main_card_shadow(),
                             content=f.Row(
+                                spacing=10,
+                                vertical_alignment=f.CrossAxisAlignment.START,
                                 alignment=f.MainAxisAlignment.SPACE_BETWEEN,
                                 controls=[
-                                    f.Column(
-                                        tight=True,
-                                        spacing=3,
-                                        controls=[
-                                            f.Text("Processo", size=12, color="#6b7280"),
-                                            f.Text(processo, size=18, color="#111827", weight=f.FontWeight.BOLD),
-                                        ],
+                                    f.Container(
+                                        expand=True,
+                                        height=172,
+                                        padding=12,
+                                        border_radius=7,
+                                        bgcolor="#f8fafc",
+                                        border=card_border("#e2e8f0"),
+                                        shadow=card_shadow(),
+                                        content=f.Column(
+                                            alignment=f.MainAxisAlignment.CENTER,
+                                            tight=True,
+                                            spacing=3,
+                                            controls=[
+                                                f.Text("Processo", size=12, color="#6b7280"),
+                                                f.Text(processo, size=18, color="#111827", weight=f.FontWeight.BOLD),
+                                            ],
+                                        ),
                                     ),
                                     f.Column(
                                         tight=True,
-                                        horizontal_alignment=f.CrossAxisAlignment.END,
-                                        spacing=3,
+                                        spacing=8,
                                         controls=[
-                                            f.Text("Área total", size=12, color="#4f46e5"),
-                                            f.Text(historico["aria_total"].replace("Área total:", "").strip(), size=20, color="#1e1b4b", weight=f.FontWeight.BOLD),
+                                            f.Container(
+                                                width=150,
+                                                height=52,
+                                                padding=f.Padding(10, 6, 10, 6),
+                                                border_radius=7,
+                                                bgcolor="#eef2ff",
+                                                border=card_border("#c7d2fe"),
+                                                shadow=card_shadow(),
+                                                content=f.Row(
+                                                    alignment=f.MainAxisAlignment.SPACE_BETWEEN,
+                                                    vertical_alignment=f.CrossAxisAlignment.CENTER,
+                                                    controls=[
+                                                        f.Text(f"Área {unit}", size=12, color="#4f46e5"),
+                                                        f.Text(value, size=16, color="#1e1b4b", weight=f.FontWeight.BOLD),
+                                                    ],
+                                                ),
+                                            )
+                                            for unit, value in area_blocks
                                         ],
                                     ),
                                 ],
@@ -289,20 +399,12 @@ def hitorico_calculo(page: f.Page):
                             padding=12,
                             border_radius=8,
                             bgcolor="#ffffff",
-                            border=f.border.all(1, "#e5e7eb"),
+                            border=card_border(),
+                            shadow=dialog_main_card_shadow(),
                             content=f.Column(
                                 tight=True,
                                 spacing=8,
-                                controls=[
-                                    f.Row(
-                                        alignment=f.MainAxisAlignment.SPACE_BETWEEN,
-                                        controls=[
-                                            f.Text(part.split(":", 1)[0].strip(), size=12, color="#6b7280"),
-                                            f.Text(part.split(":", 1)[1].strip() if ":" in part else part, size=14, color="#111827", weight=f.FontWeight.BOLD),
-                                        ],
-                                    )
-                                    for part in detalhes
-                                ],
+                                controls=detail_rows,
                             ),
                         ),
                     ],
@@ -337,6 +439,7 @@ def hitorico_calculo(page: f.Page):
                             border_radius=8,
                             bgcolor="#ffffff",
                             border=f.border.all(1, "#e5e7eb"),
+                            shadow=card_shadow(),
                             content=f.Text(
                                 value="Seu histórico de cálculo está vazio!",
                                 size=15,

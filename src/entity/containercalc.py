@@ -1,6 +1,7 @@
 import flet as f
 from entity.txt import txt_sobre
 from config.config import carregar_configuracoes
+from entity.card_style import card_border, card_shadow
 import xml.etree.ElementTree as ET
 from entity.dialogs import reload_app, get_listmed
 
@@ -10,7 +11,7 @@ class Containercalc(f.Container):
         self.itemlist = ""
         self.page = page
         self.col = {'sm': 5.90}
-        self.page.scroll = True
+        self.page.scroll = f.ScrollMode.HIDDEN
         self.bgcolor = f.Colors.with_opacity(0.10, 'white')
         self.padding = f.padding.only(
             top=15,
@@ -55,7 +56,8 @@ class Containercalc(f.Container):
             padding=10,
             bgcolor="#FFFFFF",
             border_radius=10,
-            shadow=f.BoxShadow(blur_radius=5, color="#777777"),
+            border=card_border(),
+            shadow=card_shadow(),
             visible=True,
 
             content=f.Column([
@@ -71,6 +73,24 @@ class Containercalc(f.Container):
 
         )
 
+        saved_config = carregar_configuracoes('config/config.xml') or {}
+        process_options = {"Cromo", "Cádmio", "Níquel"}
+        selected_process = saved_config.get("tipo_processo", "Cromo")
+        if selected_process not in process_options:
+            selected_process = "Cromo"
+
+        def save_process_selection(e):
+            try:
+                tree = ET.parse('config/config.xml')
+                root = tree.getroot()
+                process_element = root.find('tipo_processo')
+                if process_element is None:
+                    process_element = ET.SubElement(root, 'tipo_processo')
+                process_element.text = e.control.value
+                tree.write('config/config.xml')
+            except Exception as error:
+                print(f"Não foi possível salvar o tipo de processo: {error}")
+
         self.opt = f.Dropdown(
             label="Tipo de processo",
             width=250,
@@ -83,7 +103,8 @@ class Containercalc(f.Container):
             ]),
             autofocus=True,
             options_fill_horizontally=True,
-            value="Cromo",
+            value=selected_process,
+            on_change=save_process_selection,
         )
 
         # End Dropdown options
@@ -184,6 +205,15 @@ class Containercalc(f.Container):
         def fmt_number(value, digits=2):
             return f"{value:.{digits}f}".replace(".", ",")
 
+        def format_total_area(area_dm2):
+            area_in2 = area_dm2 * 15.500031000062
+            area_ft2 = area_dm2 * 0.107639104167
+            return (
+                f"{fmt_number(area_dm2)} dm²\n"
+                f"{fmt_number(area_in2)} in²\n"
+                f"{fmt_number(area_ft2)} ft²"
+            )
+
         def update_listmed():
             tree = ET.parse('config/config.xml')
             root = tree.getroot()
@@ -225,6 +255,7 @@ class Containercalc(f.Container):
             dlg_confirmacao.title = f.Text("Por favor, confirme", size=18, color="amber")
             dlg_confirmacao.content = f.Container(
                 width=300, height=80, border_radius=4, bgcolor="transparent",
+                shadow=card_shadow(),
                 image=f.DecorationImage(
                     opacity=0.3, src="paquimetro.webp", fit=f.ImageFit.COVER),
                 content=f.Column(
@@ -323,7 +354,8 @@ class Containercalc(f.Container):
                                     padding=12,
                                     border_radius=8,
                                     bgcolor="#ffffff",
-                                    border=f.border.all(1, "#e5e7eb"),
+                                    border=card_border(),
+                                    shadow=card_shadow(),
                                     content=f.Column(
                                         spacing=8,
                                         controls=[
@@ -359,6 +391,8 @@ class Containercalc(f.Container):
                                             padding=12,
                                             border_radius=8,
                                             bgcolor="#eef2ff",
+                                            border=card_border("#c7d2fe"),
+                                            shadow=card_shadow(),
                                             content=f.Column(
                                                 spacing=3,
                                                 controls=[
@@ -372,11 +406,13 @@ class Containercalc(f.Container):
                                             padding=12,
                                             border_radius=8,
                                             bgcolor="#ecfdf5",
+                                            border=card_border("#a7f3d0"),
+                                            shadow=card_shadow(),
                                             content=f.Column(
                                                 spacing=3,
                                                 controls=[
                                                     f.Text("Área total", size=12, color="#047857"),
-                                                    f.Text(f"{fmt_number(mp * self.pi)} dm²", size=16, color="#064e3b", weight=f.FontWeight.BOLD),
+                                                    f.Text(format_total_area(mp * self.pi), size=16, color="#064e3b", weight=f.FontWeight.BOLD),
                                                 ],
                                             ),
                                         ),
@@ -412,6 +448,7 @@ class Containercalc(f.Container):
             lista = root.findall('listmed/valor')
             cont = len(list_items)
             total_qtd = 0
+            measurement_entries = []
 
             def result_metric(label, value, bgcolor, label_color, value_color, expand=True):
                 return f.Container(
@@ -419,6 +456,8 @@ class Containercalc(f.Container):
                     padding=12,
                     border_radius=8,
                     bgcolor=bgcolor,
+                    border=card_border(),
+                    shadow=card_shadow(),
                     content=f.Column(
                         tight=True,
                         spacing=3,
@@ -437,6 +476,7 @@ class Containercalc(f.Container):
                     soma = (num1 * num2 * qtd)
                     total_qtd = qtd
                     cont = 1
+                    measurement_entries.append((num1, num2, qtd, soma * self.pi))
                     entry1.value = ''
                     entry2.value = ''
                     entry3.value = '1'
@@ -447,7 +487,14 @@ class Containercalc(f.Container):
                             listmed.append(i.text)
                         for item in list_items:
                             qtd_item = item.find('quantidade')
-                            total_qtd += int(qtd_item.text) if qtd_item is not None and qtd_item.text else 1
+                            comprimento_item = item.find('cumprimento')
+                            diametro_item = item.find('diametro')
+                            qtd_salva = int(qtd_item.text) if qtd_item is not None and qtd_item.text else 1
+                            comprimento = float(comprimento_item.text.replace(',', '.')) if comprimento_item is not None and comprimento_item.text else 0
+                            diametro = float(diametro_item.text.replace(',', '.')) if diametro_item is not None and diametro_item.text else 0
+                            area_item = float(item.find('valor').text) * self.pi
+                            total_qtd += qtd_salva
+                            measurement_entries.append((comprimento, diametro, qtd_salva, area_item))
 
                         soma = float(listmed[0])
                         for i in range(1, len(listmed)):
@@ -456,8 +503,18 @@ class Containercalc(f.Container):
                 print("Área do cálculo: ", soma)
                 aria = soma * self.pi
                 self.cont = []
+                measurement_summary = "\n".join(
+                    f"Entrada {index}: {fmt_number(comprimento)} mm x {fmt_number(diametro)} mm | "
+                    f"{quantidade} peça(s) | {fmt_number(area_item)} dm²"
+                    for index, (comprimento, diametro, quantidade, area_item) in enumerate(measurement_entries, start=1)
+                )
                 let = self.opt.value
-                total_aria = "Área total: {} dm²".format(fmt_number(aria))
+                total_aria = f"Área total:\n{format_total_area(aria)}"
+                area_blocks = [
+                    ("dm²", fmt_number(aria)),
+                    ("in²", fmt_number(aria * 15.500031000062)),
+                    ("ft²", fmt_number(aria * 0.107639104167)),
+                ]
                 process_name = let or "Cádmio"
                 bath_amp = None
                 reverse_amp = None
@@ -468,7 +525,7 @@ class Containercalc(f.Container):
                     bath_amp = amper
                     base_calc = float(self.stCd)
                     self.saida = ("Processo: (Cádmio) \n" + "Amperagem: [{}]".format(fmt_number(amper)) + "\nItens: " + str(
-                        cont) + "\nPeças: " + str(total_qtd) +
+                        cont) + "\nPeças: " + str(total_qtd) + "\nMedidas inseridas:\n" + measurement_summary +
                                   "\nBase de cálculo: ({}) amp por dm²".format(fmt_number(float(self.stCd))))
                 elif let == "Cromo":
                     amper = aria * int(self.stCr)  # para cromo
@@ -480,7 +537,7 @@ class Containercalc(f.Container):
                     self.saida = ('Processo: (Cromo) \n' + ""
                                                            "Amperagem banho: [{}] \nAmperagem reversão: [{}]"
                                                            "".format(fmt_number(amper), fmt_number(reverso)) + "\nItens: "
-                                  + str(cont) + "\nPeças: " + str(total_qtd) +
+                                  + str(cont) + "\nPeças: " + str(total_qtd) + "\nMedidas inseridas:\n" + measurement_summary +
                                   "\nBase de cálculo: ({}) amp por dm²".format(int(self.stCr)) +
                                   "\nSet de reversão: ({}) amp por dm² ".format(int(self.stRe)))
                 else:
@@ -489,7 +546,7 @@ class Containercalc(f.Container):
                     bath_amp = amper
                     base_calc = float(self.stNq)
                     self.saida = ("Processo: (Níquel) \n" + "Amperagem: {}".format(fmt_number(amper)) + "\nItens: " + str(
-                        cont) + "\nPeças: " + str(total_qtd) +
+                        cont) + "\nPeças: " + str(total_qtd) + "\nMedidas inseridas:\n" + measurement_summary +
                                   "\nBase de cálculo: ({}) amp por dm²".format(fmt_number(float(self.stNq))))
             except:
                 snackbar = f.SnackBar(
@@ -519,8 +576,38 @@ class Containercalc(f.Container):
                             result_metric("Base reversão", f"{reverse_base} A/dm²", "#f9fafb", "#6b7280", "#111827")
                         )
 
+                    measurement_rows = [
+                        f.Container(
+                            padding=10,
+                            border_radius=6,
+                            bgcolor="#f8fafc",
+                            border=card_border("#e2e8f0"),
+                            shadow=card_shadow(),
+                            content=f.Column(
+                                tight=True,
+                                spacing=2,
+                                controls=[
+                                    f.Text(
+                                        f"Entrada {index}: {fmt_number(comprimento)} mm x {fmt_number(diametro)} mm",
+                                        size=13,
+                                        color="#111827",
+                                        no_wrap=False,
+                                    ),
+                                    f.Text(
+                                        f"{quantidade} peça(s) · {fmt_number(area_item)} dm²",
+                                        size=12,
+                                        color="#4b5563",
+                                        no_wrap=False,
+                                    ),
+                                ],
+                            ),
+                        )
+                        for index, (comprimento, diametro, quantidade, area_item) in enumerate(measurement_entries, start=1)
+                    ]
+
                     self.result = f.AlertDialog(
                         content_padding=0,
+                        inset_padding=f.Padding(10, 24, 10, 24),
                         shape=f.RoundedRectangleBorder(radius=10),
                         bgcolor="#f8fafc",
                         title_padding=f.Padding(18, 14, 8, 0),
@@ -537,34 +624,63 @@ class Containercalc(f.Container):
                         ),
                         content=f.Container(
                             width=420,
+                            height=min(560, max(260, (self.page.height or 720) - 140)),
                             padding=f.Padding(18, 8, 18, 14),
                             content=f.Column(
-                                tight=True,
+                                expand=True,
+                                scroll=f.ScrollMode.HIDDEN,
                                 spacing=12,
                                 controls=[
                                     f.Container(
                                         padding=14,
                                         border_radius=8,
                                         bgcolor="#ffffff",
-                                        border=f.border.all(1, "#e5e7eb"),
+                                        border=card_border(),
+                                        shadow=card_shadow(),
                                         content=f.Row(
-                                            alignment=f.MainAxisAlignment.SPACE_BETWEEN,
+                                            spacing=10,
+                                            vertical_alignment=f.CrossAxisAlignment.START,
                                             controls=[
-                                                f.Column(
-                                                    tight=True,
-                                                    spacing=3,
-                                                    controls=[
-                                                        f.Text("Processo", size=12, color="#6b7280"),
-                                                        f.Text(process_name, size=18, color="#111827", weight=f.FontWeight.BOLD),
-                                                    ],
+                                                f.Container(
+                                                    expand=True,
+                                                    height=172,
+                                                    padding=12,
+                                                    border_radius=7,
+                                                    bgcolor="#f8fafc",
+                                                    border=card_border("#e2e8f0"),
+                                                    shadow=card_shadow(),
+                                                    content=f.Column(
+                                                        alignment=f.MainAxisAlignment.CENTER,
+                                                        tight=True,
+                                                        spacing=3,
+                                                        controls=[
+                                                            f.Text("Processo", size=12, color="#6b7280"),
+                                                            f.Text(process_name, size=18, color="#111827", weight=f.FontWeight.BOLD),
+                                                        ],
+                                                    ),
                                                 ),
                                                 f.Column(
                                                     tight=True,
-                                                    horizontal_alignment=f.CrossAxisAlignment.END,
-                                                    spacing=3,
+                                                    spacing=8,
                                                     controls=[
-                                                        f.Text("Área total", size=12, color="#4f46e5"),
-                                                        f.Text(f"{fmt_number(aria)} dm²", size=20, color="#1e1b4b", weight=f.FontWeight.BOLD),
+                                                        f.Container(
+                                                            width=150,
+                                                            height=52,
+                                                            padding=f.Padding(10, 6, 10, 6),
+                                                            border_radius=7,
+                                                            bgcolor="#eef2ff",
+                                                            border=card_border("#c7d2fe"),
+                                                            shadow=card_shadow(),
+                                                            content=f.Row(
+                                                                alignment=f.MainAxisAlignment.SPACE_BETWEEN,
+                                                                vertical_alignment=f.CrossAxisAlignment.CENTER,
+                                                                controls=[
+                                                                    f.Text(f"Área {unit}", size=12, color="#4f46e5"),
+                                                                    f.Text(value, size=16, color="#1e1b4b", weight=f.FontWeight.BOLD),
+                                                                ],
+                                                            ),
+                                                        )
+                                                        for unit, value in area_blocks
                                                     ],
                                                 ),
                                             ],
@@ -572,6 +688,26 @@ class Containercalc(f.Container):
                                     ),
                                     f.Row(spacing=10, controls=amp_cards),
                                     f.Row(spacing=8, controls=base_cards),
+                                    f.Container(
+                                        padding=12,
+                                        border_radius=8,
+                                        bgcolor="#ffffff",
+                                        border=card_border(),
+                                        shadow=card_shadow(),
+                                        content=f.Column(
+                                            tight=True,
+                                            spacing=8,
+                                            controls=[
+                                                f.Text(
+                                                    f"Medidas inseridas ({cont} entrada(s) / {total_qtd} peça(s))",
+                                                    size=14,
+                                                    color="#111827",
+                                                    weight=f.FontWeight.BOLD,
+                                                ),
+                                                f.Column(controls=measurement_rows, spacing=6, tight=True),
+                                            ],
+                                        ),
+                                    ),
                                 ],
                             ),
                         ),

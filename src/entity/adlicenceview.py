@@ -17,7 +17,7 @@ class Adlicenceview(f.View):
         )
 
         global appbar, title_activation, btn_activation
-        self.scroll = "AUTO"
+        self.scroll = f.ScrollMode.HIDDEN
         self.controls = [
             appbar := f.AppBar(
                 leading=f.IconButton(

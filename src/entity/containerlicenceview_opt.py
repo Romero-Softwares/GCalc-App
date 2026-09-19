@@ -6,6 +6,7 @@ import flet as f
 import requests
 
 from config.config_manager import ConfigManager
+from entity.card_style import dark_card_border, dark_card_shadow
 from entity.dialogs import contacts_admin
 
 
@@ -17,7 +18,7 @@ class Containerlicenceview(f.Container):
         self.api_url = "https://merotec42.pythonanywhere.com"
 
         self.col = {"sm": 5.8}
-        self.page.scroll = "auto"
+        self.page.scroll = f.ScrollMode.HIDDEN
 
         self._setup_ui_components()
         self._initialize_device_identity()
@@ -64,6 +65,8 @@ class Containerlicenceview(f.Container):
             bgcolor=f.Colors.with_opacity(0.5, "black"),
             padding=20,
             border_radius=10,
+            border=dark_card_border(),
+            shadow=dark_card_shadow(),
             content=f.Column(
                 [
                     f.Text("Ativacao do Sistema", size=20, weight="bold", color="white"),
@@ -101,6 +104,8 @@ class Containerlicenceview(f.Container):
             bgcolor=f.Colors.with_opacity(0.5, "black"),
             padding=20,
             border_radius=10,
+            border=dark_card_border(),
+            shadow=dark_card_shadow(),
             content=f.Column(
                 [
                     f.Text("Solicitar Licenca", size=20, weight="bold", color="white"),
@@ -124,6 +129,8 @@ class Containerlicenceview(f.Container):
             bgcolor=f.Colors.with_opacity(0.5, "black"),
             border_radius=5,
             padding=10,
+            border=dark_card_border(),
+            shadow=dark_card_shadow(),
             visible=False,
             content=f.Column(
                 controls=[

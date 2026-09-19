@@ -11,6 +11,11 @@ build/
 
 # IDE files
 .vs/
+.merotec_attachments/
+.merotec_system_ai/
+
+# Local release archives
+dist/
 
 # Local runtime data
 storage/
