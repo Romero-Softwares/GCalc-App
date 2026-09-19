@@ -10,22 +10,24 @@ from entity.update_checker import UpdateChecker
 
 
 def setup_app_data_directory():
-    """Usa uma pasta gravável do usuário para os arquivos de configuração.
+    """Usa o armazenamento persistente e privado fornecido pelo Flet.
 
-    No pacote Windows, o diretório do executável pode ser somente leitura e
-    também muda quando a pasta é renomeada ou o aplicativo é extraído em outro
-    local. Centralizar os arquivos locais em LOCALAPPDATA evita que a abertura
-    falhe ao criar ou ler ``config/config.xml``.
+    Esse diretório é gravável e preservado pelo sistema operacional entre
+    atualizações, inclusive em instalações distribuídas pela Google Play.
     """
-    base_directory = os.environ.get("LOCALAPPDATA")
-    if not base_directory:
-        base_directory = os.path.join(os.path.expanduser("~"), "AppData", "Local")
+    # O Flet define este diretório em Android, iOS e desktop. Ele é privado,
+    # gravável e mantido após atualizações publicadas pela Play Store.
+    app_directory = os.environ.get("FLET_APP_STORAGE_DATA")
+    if not app_directory:
+        base_directory = os.environ.get("LOCALAPPDATA")
+        if not base_directory:
+            base_directory = os.path.join(os.path.expanduser("~"), "AppData", "Local")
 
-    app_directory = os.path.join(
-        base_directory,
-        "Merotec Dev Softwares",
-        "Galvanos Calc",
-    )
+        app_directory = os.path.join(
+            base_directory,
+            "Merotec Dev Softwares",
+            "Galvanos Calc",
+        )
     os.makedirs(app_directory, exist_ok=True)
     os.chdir(app_directory)
 

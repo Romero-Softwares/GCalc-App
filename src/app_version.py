@@ -4,4 +4,4 @@ Mantenha este valor igual a ``project.version`` no pyproject.toml ao preparar
 uma nova publicação.
 """
 
-__version__ = "0.1.7"
+__version__ = "0.1.9"

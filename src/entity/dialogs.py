@@ -1,10 +1,18 @@
 import xml.etree.ElementTree as ET
+from urllib.parse import quote
 
 import flet as f
 
 from config.config import carregar_configuracoes
 from entity.card_style import card_border, card_shadow
 from entity.txt import txt_info_calc
+
+
+GOOGLE_PLAY_URL = "https://play.google.com/store/apps/details?id=com.merotecdev.gcalc"
+ANDROID_SHARE_TEXT = (
+    "Conheça o Galvanos Calc, a calculadora para processos galvânicos: "
+    f"{GOOGLE_PLAY_URL}"
+)
 
 
 def dialog_main_card_shadow():
@@ -456,13 +464,17 @@ def hitorico_calculo(page: f.Page):
 
 
 def share_clicked(page: f.Page):
-    dlg = f.AlertDialog(
-        shape=f.RoundedRectangleBorder(radius=5),
-        icon=f.Icon(f.Icons.SHARE),
-        title=f.Text("Compartilhamento em desenvolvimento", size=16),
-        actions=[f.TextButton("Fechar", on_click=lambda _: page.close(dlg))],
+    """Abre a folha de compartilhamento Android com o link do Google Play."""
+    share_intent = (
+        "intent:#Intent;action=android.intent.action.SEND;type=text/plain;"
+        f"S.android.intent.extra.TEXT={quote(ANDROID_SHARE_TEXT, safe='')};end"
     )
-    page.open(dlg)
+    page.launch_url(share_intent)
+
+
+def open_google_play(page: f.Page):
+    """Abre a página oficial do aplicativo no Google Play."""
+    page.launch_url(GOOGLE_PLAY_URL)
 
 
 def i_clicked(page: f.Page):

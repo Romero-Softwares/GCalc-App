@@ -4,7 +4,7 @@ import flet as f
 
 from config.config import carregar_configuracoes
 from entity.card_style import card_border, card_shadow
-from entity.dialogs import share_clicked
+from entity.dialogs import open_google_play, share_clicked
 
 
 class ConfigView(f.View):
@@ -46,8 +46,11 @@ class ConfigView(f.View):
                             icon="share",
                             on_click=lambda _: share_clicked(page),
                         ),
-                        f.PopupMenuItem(text="Disponível para iOS", checked=False),
-                        f.PopupMenuItem(text="Disponível para Android", checked=False),
+                        f.PopupMenuItem(
+                            text="Obter no Google Play",
+                            icon=f.Icons.ANDROID,
+                            on_click=lambda _: open_google_play(page),
+                        ),
                     ],
                 )
             ],

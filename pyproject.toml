@@ -1,7 +1,7 @@
 [project]
 name = "gcalc"
-version = "0.1.7"
-build = 6
+version = "0.1.9"
+build = 8
 description = "Gcalc - Galvanos Calculador"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -14,7 +14,7 @@ dependencies = [
 
 [tool.flet]
 platforms = ["android-arm64"]
-build_number = 6
+build_number = 8
 # org name in reverse domain name notation, e.g. "com.mycompany".
 # Combined with project.name to build bundle ID for iOS and Android apps
 org = "com.merotecdev"

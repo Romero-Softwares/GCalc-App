@@ -12,6 +12,7 @@ from entity.dialogs import (
     get_listmed,
     hitorico_calculo,
     i_clicked,
+    open_google_play,
     share_clicked,
 )
 
@@ -276,8 +277,11 @@ class Calc(f.View):
                                 icon="share",
                                 on_click=lambda _: share_clicked(page),
                             ),
-                            f.PopupMenuItem(text="Disponível para iOS", checked=False),
-                            f.PopupMenuItem(text="Disponível para Android", checked=False),
+                            f.PopupMenuItem(
+                                text="Obter no Google Play",
+                                icon=f.Icons.ANDROID,
+                                on_click=lambda _: open_google_play(page),
+                            ),
                         ],
                     ),
                 ],
