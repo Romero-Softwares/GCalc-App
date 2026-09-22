@@ -1,4 +1,5 @@
 import xml.etree.ElementTree as ET
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from urllib.parse import quote
 
 import flet as f
@@ -77,6 +78,14 @@ def get_listmed(page: f.Page):
         child = item.find(name)
         return child.text if child is not None and child.text else default
 
+    def format_millimeters(value):
+        """Exibe medidas salvas em milímetros sem casas decimais."""
+        try:
+            millimeters = Decimal(str(value).replace(",", "."))
+            return f"{millimeters.quantize(Decimal('1'), rounding=ROUND_HALF_UP):.0f}"
+        except (InvalidOperation, ValueError):
+            return value
+
     def measure_card(item):
         qtd = child_text(item, "quantidade", "1")
         area_total = child_text(item, "aria", "0")
@@ -102,7 +111,7 @@ def get_listmed(page: f.Page):
                         ],
                     ),
                     f.Text(
-                        f"Comprimento: {comprimento} mm  |  Diâmetro: {diametro} mm",
+                        f"Comprimento: {format_millimeters(comprimento)} mm  |  Diâmetro: {format_millimeters(diametro)} mm",
                         size=13,
                         color="#374151",
                     ),

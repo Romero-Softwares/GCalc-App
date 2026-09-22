@@ -3,7 +3,9 @@ import json
 import flet as f
 import requests
 
+from app_version import __build__, __version__
 from config.config import carregar_configuracoes
+from entity.update_checker import GOOGLE_PLAY_URL, _is_update_available
 
 
 class Notifications(f.View):
@@ -84,6 +86,7 @@ class Notifications(f.View):
     def load_notifications(self):
         self.list_view.controls.clear()
         self.API_BASE_URL = "https://merotec42.pythonanywhere.com"
+        self.add_update_notification()
         try:
             retorno = requests.get(f"{self.API_BASE_URL}/get_notifications", timeout=10)
             data = json.loads(retorno.content)
@@ -106,8 +109,36 @@ class Notifications(f.View):
             self.text_no_notify.visible = False
         self.page.update()
 
+    def add_update_notification(self):
+        """Inclui na central a atualiza\u00e7\u00e3o identificada na abertura do app."""
+        update = self.page.client_storage.get("available_update") or {}
+        version = str(update.get("version") or "")
+        build = update.get("build")
+        if not version or not _is_update_available(version, build, __version__, __build__):
+            return
+
+        build_label = f" (build {build})" if build is not None else ""
+
+        item = {
+            "id": f"system-update-{version}-{build or 'unknown'}",
+            "icon_noticia": f.Icons.SYSTEM_UPDATE,
+            "titulo_noticia": "Atualiza\u00e7\u00e3o dispon\u00edvel",
+            "txt_noticia": (
+                f"A vers\u00e3o {version}{build_label} do Galvanos Calc est\u00e1 dispon\u00edvel "
+                "na Google Play."
+            ),
+            "action_url": GOOGLE_PLAY_URL,
+        }
+        item_id = item["id"]
+        if item_id not in self.local_deleted_ids:
+            self.list_view.controls.append(
+                self.build_notification_card(item, item_id in self.local_read_ids)
+            )
+
     def build_notification_card(self, item, is_read):
         item_id = str(item["id"])
+        action_url = item.get("action_url")
+        is_update_notification = bool(action_url)
         return f.Card(
             content=f.Container(
                 padding=15,
@@ -122,17 +153,27 @@ class Notifications(f.View):
                             ),
                             title=f.Text(item["titulo_noticia"], weight="bold" if not is_read else "normal"),
                             subtitle=f.Text(item["txt_noticia"]),
-                            on_click=lambda _: self.as_read_e_go(item_id)
-                            if self.status["active"] == "False"
-                            else None,
+                            on_click=(
+                                lambda _: self.open_notification_link(item_id, action_url)
+                                if is_update_notification
+                                else lambda _: self.as_read_e_go(item_id)
+                                if self.status["active"] == "False"
+                                else None
+                            ),
                         ),
                         f.Row(
                             [
                                 f.TextButton(
                                     "Marcar como lida",
                                     icon=f.Icons.CHECK_CIRCLE_OUTLINE,
-                                    visible=not is_read,
+                                    visible=not is_read and not is_update_notification,
                                     on_click=lambda _: self.mark_as_read(item_id),
+                                ),
+                                f.TextButton(
+                                    "Atualizar",
+                                    icon=f.Icons.SYSTEM_UPDATE,
+                                    visible=is_update_notification,
+                                    on_click=lambda _: self.open_notification_link(item_id, action_url),
                                 ),
                                 f.TextButton(
                                     "Apagar",
@@ -159,6 +200,10 @@ class Notifications(f.View):
     def as_read_e_go(self, n_id):
         self.mark_as_read(n_id)
         self.page.go("/")
+
+    def open_notification_link(self, n_id, url):
+        self.mark_as_read(n_id)
+        self.page.launch_url(url)
 
     def delete_local(self, n_id):
         self.local_deleted_ids.add(n_id)

@@ -3,6 +3,7 @@ import json
 import flet as f
 import requests
 
+from app_version import __build__, __version__
 from config.config import carregar_configuracoes
 from entity.configview import ConfigView
 from entity.containercalc import Containercalc
@@ -15,6 +16,7 @@ from entity.dialogs import (
     open_google_play,
     share_clicked,
 )
+from entity.update_checker import _is_update_available
 
 
 class Calc(f.View):
@@ -310,6 +312,7 @@ class Calc(f.View):
         ]
 
         self._remote_refresh_started = False
+        self.page._refresh_notification_badge = self.get_id_notify
         self.connection_reload(check_remote=False)
 
     def start_background_refresh(self):
@@ -324,20 +327,33 @@ class Calc(f.View):
 
     def get_id_notify(self):
         api_base_url = "https://merotec42.pythonanywhere.com"
-        id_notify = []
+        unread_remote = False
         try:
-            nt = requests.get(f"{api_base_url}/get_notifications", timeout=10)
-            dados = json.loads(nt.content)
-            for noticia in dados:
-                id_notify.append(noticia["id"])
-
-            remote_id = set(int(i) for i in id_notify)
-            ids_referencia = set(int(i) for i in self.ids_comparar_list)
-            nao_lidos = [i for i in remote_id if i not in ids_referencia]
-            self.badge.visible = bool(nao_lidos)
+            response = requests.get(f"{api_base_url}/get_notifications", timeout=10)
+            response.raise_for_status()
+            dados = response.json()
+            remote_ids = {str(noticia["id"]) for noticia in dados}
+            read_ids = {str(item) for item in (self.page.client_storage.get("read_ids") or [])}
+            deleted_ids = {
+                str(item) for item in (self.page.client_storage.get("deleted_ids") or [])
+            }
+            unread_remote = bool(remote_ids - read_ids - deleted_ids)
         except Exception:
             print("ID de notificação não carregado.")
-            self.badge.visible = False
+            pass
+        update = self.page.client_storage.get("available_update") or {}
+        version = str(update.get("version") or "")
+        build = update.get("build")
+        update_id = f"system-update-{version}-{build or 'unknown'}"
+        read_ids = {str(item) for item in (self.page.client_storage.get("read_ids") or [])}
+        deleted_ids = {str(item) for item in (self.page.client_storage.get("deleted_ids") or [])}
+        unread_update = (
+            bool(version)
+            and _is_update_available(version, build, __version__, __build__)
+            and update_id not in read_ids
+            and update_id not in deleted_ids
+        )
+        self.badge.visible = unread_remote or unread_update
         self.page.update()
 
     def clean_historic(self) -> None:

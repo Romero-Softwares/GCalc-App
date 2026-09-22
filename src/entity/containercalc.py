@@ -3,6 +3,7 @@ from entity.txt import txt_sobre
 from config.config import carregar_configuracoes
 from entity.card_style import card_border, card_shadow
 import xml.etree.ElementTree as ET
+from decimal import Decimal, InvalidOperation, ROUND_DOWN, ROUND_HALF_UP
 from entity.dialogs import reload_app, get_listmed
 
 class Containercalc(f.Container):
@@ -21,7 +22,7 @@ class Containercalc(f.Container):
         )
         global itemlist
         self.border_radius = 8
-        self.pi = 3.141592653589793 / 10000
+        self.pi = Decimal("3.141592653589793") / Decimal("10000")
         self.cont = []
 
         self.calcular = f.ElevatedButton("Calcular medidas", icon=f.Icons.AREA_CHART_SHARP, disabled=False,
@@ -133,7 +134,7 @@ class Containercalc(f.Container):
             keyboard_type=f.KeyboardType.NUMBER,
         )
         unit_help = f.Text(
-            "As medidas são calculadas em milímetros.",
+            "Conversões e cálculos mantêm quatro casas decimais.",
             size=12,
             color="#4b5563",
         )
@@ -144,13 +145,13 @@ class Containercalc(f.Container):
                 entry2.label = "Diâmetro (in)"
                 entry1.hint_text = "Ex.: 4,75 ou 4.75"
                 entry2.hint_text = "Ex.: 1,38 ou 1.38"
-                unit_help.value = "As polegadas são convertidas automaticamente para milímetros."
+                unit_help.value = "As polegadas são convertidas para milímetros com quatro casas decimais."
             else:
                 entry1.label = "Comprimento (mm)"
                 entry2.label = "Diâmetro (mm)"
                 entry1.hint_text = "Ex.: 120 ou 120,5"
                 entry2.hint_text = "Ex.: 35 ou 35,5"
-                unit_help.value = "As medidas são calculadas em milímetros."
+                unit_help.value = "Conversões e cálculos mantêm quatro casas decimais."
             self.page.update()
 
         measurement_unit = f.RadioGroup(
@@ -188,10 +189,13 @@ class Containercalc(f.Container):
             text = (value or "").strip().replace(",", ".")
             if not text:
                 raise ValueError("empty")
-            parsed = float(text)
+            try:
+                parsed = Decimal(text)
+            except InvalidOperation as error:
+                raise ValueError("invalid") from error
             if parsed <= 0:
                 raise ValueError("non-positive")
-            return parsed * 25.4 if measurement_unit.value == "in" else parsed
+            return calculate(parsed * Decimal("25.4")) if measurement_unit.value == "in" else parsed
 
         def parse_quantity(value):
             text = (value or "1").strip()
@@ -202,12 +206,21 @@ class Containercalc(f.Container):
                 raise ValueError("non-positive")
             return parsed
 
-        def fmt_number(value, digits=2):
+        def calculate(value):
+            return Decimal(value).quantize(Decimal("0.0001"), rounding=ROUND_DOWN)
+
+        def fmt_number(value, digits=4):
             return f"{value:.{digits}f}".replace(".", ",")
 
+        def fmt_integer(value):
+            return f"{Decimal(value).quantize(Decimal('1'), rounding=ROUND_HALF_UP):.0f}"
+
+        def fmt_amperage(value):
+            return f"{Decimal(value).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP):.2f}".replace(".", ",")
+
         def format_total_area(area_dm2):
-            area_in2 = area_dm2 * 15.500031000062
-            area_ft2 = area_dm2 * 0.107639104167
+            area_in2 = calculate(area_dm2 * Decimal("15.500031000062"))
+            area_ft2 = calculate(area_dm2 * Decimal("0.107639104167"))
             return (
                 f"{fmt_number(area_dm2)} dm²\n"
                 f"{fmt_number(area_in2)} in²\n"
@@ -281,9 +294,9 @@ class Containercalc(f.Container):
                 num1 = parse_measure(entry1.value)
                 num2 = parse_measure(entry2.value)
                 qtd = parse_quantity(entry3.value)
-                mp_unit = num1 * num2
-                mp = mp_unit * qtd
-                self.pre_aria = f"{mp * self.pi}"
+                mp_unit = calculate(num1 * num2)
+                mp = calculate(mp_unit * qtd)
+                self.pre_aria = f"{calculate(mp * self.pi)}"
 
                 self.cont.append(mp)
 
@@ -301,8 +314,8 @@ class Containercalc(f.Container):
 
                     listmed = ET.SubElement(root, 'listmed')
                     cont = len(root.findall('listmed'))
-                    aria = fmt_number(mp * self.pi)
-                    aria_unit = fmt_number(mp_unit * self.pi)
+                    aria = fmt_number(calculate(mp * self.pi))
+                    aria_unit = fmt_number(calculate(mp_unit * self.pi))
                     # Append new data
                     new_item = ET.SubElement(listmed, "aria")
                     ET.SubElement(listmed, "aria_unitaria").text = aria_unit
@@ -313,7 +326,7 @@ class Containercalc(f.Container):
                     new_id = ET.SubElement(listmed, "id")
                     new_id.text = f"{cont}"
                     new_item.text = f"{aria}"
-                    new_value.text = f"{mp}"
+                    new_value.text = f"{mp:.4f}"
 
                     # Save the changes back to the file
                     tree.write('config/config.xml')
@@ -325,7 +338,7 @@ class Containercalc(f.Container):
                     print("Erro ao processar a adição na lista!")
 
                 self.pre_aria = "{}x - Comprimento: {} mm - Diâmetro: {} mm\nÁrea unitária: {} dm²\nÁrea total: {} dm²".format(
-                    qtd, fmt_number(num1), fmt_number(num2), fmt_number(mp_unit * self.pi), fmt_number(mp * self.pi)
+                    qtd, fmt_integer(num1), fmt_integer(num2), fmt_number(calculate(mp_unit * self.pi)), fmt_number(calculate(mp * self.pi))
                 )
                 self.results = f.AlertDialog(
                     content_padding=0,
@@ -370,14 +383,14 @@ class Containercalc(f.Container):
                                                 alignment=f.MainAxisAlignment.SPACE_BETWEEN,
                                                 controls=[
                                                     f.Text("Comprimento", size=12, color="#6b7280"),
-                                                    f.Text(f"{fmt_number(num1)} mm", size=14, color="#111827"),
+                                                    f.Text(f"{fmt_integer(num1)} mm", size=14, color="#111827"),
                                                 ],
                                             ),
                                             f.Row(
                                                 alignment=f.MainAxisAlignment.SPACE_BETWEEN,
                                                 controls=[
                                                     f.Text("Diâmetro", size=12, color="#6b7280"),
-                                                    f.Text(f"{fmt_number(num2)} mm", size=14, color="#111827"),
+                                                    f.Text(f"{fmt_integer(num2)} mm", size=14, color="#111827"),
                                                 ],
                                             ),
                                         ],
@@ -397,7 +410,7 @@ class Containercalc(f.Container):
                                                 spacing=3,
                                                 controls=[
                                                     f.Text("Área unitária", size=12, color="#4f46e5"),
-                                                    f.Text(f"{fmt_number(mp_unit * self.pi)} dm²", size=16, color="#1e1b4b", weight=f.FontWeight.BOLD),
+                                                    f.Text(f"{fmt_number(calculate(mp_unit * self.pi))} dm²", size=16, color="#1e1b4b", weight=f.FontWeight.BOLD),
                                                 ],
                                             ),
                                         ),
@@ -412,7 +425,7 @@ class Containercalc(f.Container):
                                                 spacing=3,
                                                 controls=[
                                                     f.Text("Área total", size=12, color="#047857"),
-                                                    f.Text(format_total_area(mp * self.pi), size=16, color="#064e3b", weight=f.FontWeight.BOLD),
+                                                    f.Text(format_total_area(calculate(mp * self.pi)), size=16, color="#064e3b", weight=f.FontWeight.BOLD),
                                                 ],
                                             ),
                                         ),
@@ -473,10 +486,10 @@ class Containercalc(f.Container):
                     num1 = parse_measure(entry1.value)
                     num2 = parse_measure(entry2.value)
                     qtd = parse_quantity(entry3.value)
-                    soma = (num1 * num2 * qtd)
+                    soma = calculate(calculate(num1 * num2) * qtd)
                     total_qtd = qtd
                     cont = 1
-                    measurement_entries.append((num1, num2, qtd, soma * self.pi))
+                    measurement_entries.append((num1, num2, qtd, calculate(soma * self.pi)))
                     entry1.value = ''
                     entry2.value = ''
                     entry3.value = '1'
@@ -490,21 +503,21 @@ class Containercalc(f.Container):
                             comprimento_item = item.find('cumprimento')
                             diametro_item = item.find('diametro')
                             qtd_salva = int(qtd_item.text) if qtd_item is not None and qtd_item.text else 1
-                            comprimento = float(comprimento_item.text.replace(',', '.')) if comprimento_item is not None and comprimento_item.text else 0
-                            diametro = float(diametro_item.text.replace(',', '.')) if diametro_item is not None and diametro_item.text else 0
-                            area_item = float(item.find('valor').text) * self.pi
+                            comprimento = Decimal(comprimento_item.text.replace(',', '.')) if comprimento_item is not None and comprimento_item.text else Decimal("0")
+                            diametro = Decimal(diametro_item.text.replace(',', '.')) if diametro_item is not None and diametro_item.text else Decimal("0")
+                            area_item = calculate(Decimal(item.find('valor').text) * self.pi)
                             total_qtd += qtd_salva
                             measurement_entries.append((comprimento, diametro, qtd_salva, area_item))
 
-                        soma = float(listmed[0])
+                        soma = Decimal(listmed[0])
                         for i in range(1, len(listmed)):
-                            soma = soma + float(listmed[i])
+                            soma = calculate(soma + Decimal(listmed[i]))
 
                 print("Área do cálculo: ", soma)
-                aria = soma * self.pi
+                aria = calculate(soma * self.pi)
                 self.cont = []
                 measurement_summary = "\n".join(
-                    f"Entrada {index}: {fmt_number(comprimento)} mm x {fmt_number(diametro)} mm | "
+                    f"Entrada {index}: {fmt_integer(comprimento)} mm x {fmt_integer(diametro)} mm | "
                     f"{quantidade} peça(s) | {fmt_number(area_item)} dm²"
                     for index, (comprimento, diametro, quantidade, area_item) in enumerate(measurement_entries, start=1)
                 )
@@ -512,8 +525,8 @@ class Containercalc(f.Container):
                 total_aria = f"Área total:\n{format_total_area(aria)}"
                 area_blocks = [
                     ("dm²", fmt_number(aria)),
-                    ("in²", fmt_number(aria * 15.500031000062)),
-                    ("ft²", fmt_number(aria * 0.107639104167)),
+                    ("in²", fmt_number(calculate(aria * Decimal("15.500031000062")))),
+                    ("ft²", fmt_number(calculate(aria * Decimal("0.107639104167")))),
                 ]
                 process_name = let or "Cádmio"
                 bath_amp = None
@@ -521,33 +534,33 @@ class Containercalc(f.Container):
                 base_calc = None
                 reverse_base = None
                 if let == "Cádmio" or let == None:
-                    amper = aria * float(self.stCd)  # para cadmio
+                    amper = calculate(aria * Decimal(str(self.stCd)))  # para cadmio
                     bath_amp = amper
-                    base_calc = float(self.stCd)
-                    self.saida = ("Processo: (Cádmio) \n" + "Amperagem: [{}]".format(fmt_number(amper)) + "\nItens: " + str(
+                    base_calc = Decimal(str(self.stCd))
+                    self.saida = ("Processo: (Cádmio) \n" + "Amperagem: [{}]".format(fmt_amperage(amper)) + "\nItens: " + str(
                         cont) + "\nPeças: " + str(total_qtd) + "\nMedidas inseridas:\n" + measurement_summary +
-                                  "\nBase de cálculo: ({}) amp por dm²".format(fmt_number(float(self.stCd))))
+                                  "\nBase de cálculo: ({}) amp por dm²".format(fmt_integer(base_calc)))
                 elif let == "Cromo":
-                    amper = aria * int(self.stCr)  # para cromo
-                    reverso = aria * int(self.stRe)
+                    amper = calculate(aria * Decimal(str(self.stCr)))  # para cromo
+                    reverso = calculate(aria * Decimal(str(self.stRe)))
                     bath_amp = amper
                     reverse_amp = reverso
-                    base_calc = int(self.stCr)
-                    reverse_base = int(self.stRe)
+                    base_calc = Decimal(str(self.stCr))
+                    reverse_base = Decimal(str(self.stRe))
                     self.saida = ('Processo: (Cromo) \n' + ""
                                                            "Amperagem banho: [{}] \nAmperagem reversão: [{}]"
-                                                           "".format(fmt_number(amper), fmt_number(reverso)) + "\nItens: "
+                                                           "".format(fmt_amperage(amper), fmt_amperage(reverso)) + "\nItens: "
                                   + str(cont) + "\nPeças: " + str(total_qtd) + "\nMedidas inseridas:\n" + measurement_summary +
-                                  "\nBase de cálculo: ({}) amp por dm²".format(int(self.stCr)) +
-                                  "\nSet de reversão: ({}) amp por dm² ".format(int(self.stRe)))
+                                  "\nBase de cálculo: ({}) amp por dm²".format(fmt_integer(base_calc)) +
+                                  "\nSet de reversão: ({}) amp por dm² ".format(fmt_integer(reverse_base)))
                 else:
-                    amper = aria * float(self.stNq)  # para níquel
+                    amper = calculate(aria * Decimal(str(self.stNq)))  # para níquel
                     process_name = "Níquel"
                     bath_amp = amper
-                    base_calc = float(self.stNq)
-                    self.saida = ("Processo: (Níquel) \n" + "Amperagem: {}".format(fmt_number(amper)) + "\nItens: " + str(
+                    base_calc = Decimal(str(self.stNq))
+                    self.saida = ("Processo: (Níquel) \n" + "Amperagem: {}".format(fmt_amperage(amper)) + "\nItens: " + str(
                         cont) + "\nPeças: " + str(total_qtd) + "\nMedidas inseridas:\n" + measurement_summary +
-                                  "\nBase de cálculo: ({}) amp por dm²".format(fmt_number(float(self.stNq))))
+                                  "\nBase de cálculo: ({}) amp por dm²".format(fmt_integer(base_calc)))
             except:
                 snackbar = f.SnackBar(
                     f.Text("Preencha comprimento, diâmetro e quantidade com valores maiores que zero.", size=16,
@@ -559,21 +572,21 @@ class Containercalc(f.Container):
                 if config['active'] == "True":
                     clear_listmed()
                     amp_cards = [
-                        result_metric("Amperagem banho", f"{fmt_number(bath_amp)} A", "#eef2ff", "#4f46e5", "#1e1b4b"),
+                        result_metric("Amperagem banho", f"{fmt_amperage(bath_amp)} A", "#eef2ff", "#4f46e5", "#1e1b4b"),
                     ]
                     if reverse_amp is not None:
                         amp_cards.append(
-                            result_metric("Amperagem reversão", f"{fmt_number(reverse_amp)} A", "#fff7ed", "#c2410c", "#7c2d12")
+                            result_metric("Amperagem reversão", f"{fmt_amperage(reverse_amp)} A", "#fff7ed", "#c2410c", "#7c2d12")
                         )
 
                     base_cards = [
                         result_metric("Itens", str(cont), "#f9fafb", "#6b7280", "#111827"),
                         result_metric("Peças", str(total_qtd), "#f9fafb", "#6b7280", "#111827"),
-                        result_metric("Base banho", f"{base_calc} A/dm²", "#f9fafb", "#6b7280", "#111827"),
+                        result_metric("Base banho", f"{fmt_integer(base_calc)} A/dm²", "#f9fafb", "#6b7280", "#111827"),
                     ]
                     if reverse_base is not None:
                         base_cards.append(
-                            result_metric("Base reversão", f"{reverse_base} A/dm²", "#f9fafb", "#6b7280", "#111827")
+                            result_metric("Base reversão", f"{fmt_integer(reverse_base)} A/dm²", "#f9fafb", "#6b7280", "#111827")
                         )
 
                     measurement_rows = [
@@ -588,7 +601,7 @@ class Containercalc(f.Container):
                                 spacing=2,
                                 controls=[
                                     f.Text(
-                                        f"Entrada {index}: {fmt_number(comprimento)} mm x {fmt_number(diametro)} mm",
+                                        f"Entrada {index}: {fmt_integer(comprimento)} mm x {fmt_integer(diametro)} mm",
                                         size=13,
                                         color="#111827",
                                         no_wrap=False,

@@ -1,7 +1,7 @@
 [project]
 name = "gcalc"
-version = "0.1.9"
-build = 8
+version = "0.1.10"
+build = 9
 description = "Gcalc - Galvanos Calculador"
 readme = "README.md"
 requires-python = ">=3.13"
